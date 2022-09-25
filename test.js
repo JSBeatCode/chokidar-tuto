@@ -15,6 +15,7 @@ const watcher = chokidar.watch('watch-folder', {
 })
 
 const state = {
+    filePath: 'C:/Users/jsd/programming/nodejs/chokidar-tuto/watch-folder',
     startOver: false,
     unlinks: {
         switch: false,
@@ -30,39 +31,43 @@ const state = {
         switch: false,
         list: [],
         cnt:0
-    }
+    },
+    loadPath: [],
+    cnt: 0,
+    loop: 0,
 }
 
-let loadPath = [];
-let cnt = 0;
-let loop = 0;
+
 watcher.on('ready', async ()=> {
     console.log('Ready to watch files')
     state.startOver = true;
     console.log(state)
 }).on('add', async (path) => {
     if(state.startOver === true){
-        if(state.add.switch === false) {
-            state.add.list = new Array();
-            await recursiveFile('C:/Users/jsd/programming/nodejs/chokidar-tuto/watch-folder', 'add')
-            cnt = state.add.list.length - loadPath.length
-            state.add.switch = true
-        }
-        await funcLoadPath(path, 'add')
-        console.log('debug2 : ', loop, cnt)
-        console.log('debug3-1', state.add.list)
-        console.log('debug3-2', loadPath)
-        if(
-            loop === (cnt-1)
-            ){
-            loop = 0
-            cnt = 0
-            state.add.list = new Array()
-            state.add.switch = false
-            console.log('add program update')
-        } else {
-            loop++;
-        }
+        const timeSet = await getTimeSet(state.filePath)
+        console.log('jsdno0 debug10', timeSet)
+        // for(let i = 0; i < 2; i++) {
+            setTimeout(async (v,i,a)=>{
+                if(state.add.switch === false) {
+                    state.add.list = new Array();
+                    await recursiveFile(state.filePath, 'add')
+                    // console.log('jsdno0 debug4', state.add.list.length +'/'+ state.loadPath.length)
+                    state.cnt = state.add.list.length - state.loadPath.length
+                    // console.log('jsdno0 debug1', state.cnt)
+                    state.add.switch = true
+                }
+                await funcLoadPath(path, 'add')
+                if(state.loop === (state.cnt-1)){
+                    state.loop = 0
+                    state.cnt = 0
+                    state.add.list = new Array()
+                    state.add.switch = false
+                    console.log('add program update')
+                } else {
+                    state.loop++;
+                }
+            }, timeSet)
+        // }
     } else {
         funcLoadPath(path, 'add')
         console.log(path, 'File is added')
@@ -78,7 +83,7 @@ watcher.on('ready', async ()=> {
             // console.log('removed', state.unlinks.list)
         }
         state.unlinks.cnt++;
-        console.log('debug3 : ' + state.unlinks.cnt + '/' + state.unlinks.list.length)
+        // console.log('jsdno debug5 : ' + state.unlinks.cnt + '/' + state.unlinks.list.length)
         if(state.unlinks.cnt === state.unlinks.list.length){
             state.unlinks.list = new Array();
             state.unlinks.switch = false;
@@ -91,40 +96,87 @@ watcher.on('ready', async ()=> {
         console.log(path, 'File is removed')
     }
 }).on('change', path => {
-    console.log(path, 'File is changed');
+    console.log(path, 'File is changed')
 }).on('error', error => {
     console.log(error)
 });
 
+async function getTimeSet(filePath) {
+    
+    let arrFiles = [];
+    arrFiles = await archive(filePath, arrFiles);
+    // console.log('jsdno0 debug9', arrFiles)
+    let totalSize = 0;
+    for(let i = 0; i < arrFiles.length; i++) {
+        try {
+            totalSize += fs.statSync(arrFiles[i]).size;
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    // console.log('jsdno0 debug8', totalSize)
+    return ((totalSize <= 0) ? (1 * 1000) : ((totalSize/10) * 1000));
+    // const stats = fs.statSync(filePath);
+    // const fileSizeInBytes = stats.size;
+    // const fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024)
+    // // console.log('jsdno0 debug6', fileSizeInBytes, fileSizeInMegabytes)
+    
+    // const size = await getFolderSize.loose(filePath);
+    // console.log(size)
+
+    // return ((fileSizeInBytes <= 0) ? (1 * 1000) : ((fileSizeInBytes * 1000) <= 1000 ? (1 * 1000) : (fileSizeInBytes * 1000)));
+}
+
+async function archive(dir, arrFiles){
+    let result = arrFiles || [];
+    const fileList = fs.readdirSync(dir);
+    for(let i=0; i<fileList.length; i++) {
+        const subDir = path.join(dir, fileList[i]);
+        const stat = fs.lstatSync(subDir)
+        if(stat.isFile()){
+            result.push(subDir);
+        } else {
+            archive(subDir);
+        }
+    }
+    return result;
+}
+
 async function funcLoadPath(path, type){
     switch(type){
         case 'add':
-            loadPath.push(path); break;
+            state.loadPath.push(path); break;
         case 'unlink':
-            loadPath = loadPath.filter((v,i,a)=>{
+            state.loadPath = state.loadPath.filter((v,i,a)=>{
                 return v !== path
             }); 
             break;
     }
-    loadPath = loadPath.filter((v,i,a) => {
+    state.loadPath = state.loadPath.filter((v,i,a) => {
         return a.indexOf(v) === i
     })
 }
+// let arrFiles = null; 
 async function recursiveFile(dir, type){
     const fileList = fs.readdirSync(dir)
+    // arrFiles = ((arrFiles !== null) ? arrFiles : [])
         for(let i=0; i<fileList.length; i++) {
             const subDir = path.join(dir, fileList[i]);
             const stat = fs.lstatSync(subDir)
             if(stat.isFile()){
                 switch(type){
                     case 'add':
-                        state.add.list.push(fileList[i]);
+                        state.add.list.push(fileList[i]); break;
                     case 'change':
-                        state.change.list.push(fileList[i]);
+                        state.change.list.push(fileList[i]);  break;
                 }
+                // arrFiles.push(fileList[i])
             } else {
-                recursiveFile(subDir, type);
+                await recursiveFile(subDir, type);
             }
 
         }
+        // return arrFiles;
 }
+
+// process.send('ready')
