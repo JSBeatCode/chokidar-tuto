@@ -25,16 +25,18 @@ const state = {
     add: {
         switch: false,
         list: [],
-        // cnt:0
+        loop: 0,
+        cnt:0
     },
     change: {
         switch: false,
         list: [],
+        loop: 0,
         cnt:0
     },
     loadPath: [],
-    cnt: 0,
-    loop: 0,
+    // cnt: 0,
+    // loop: 0,
 }
 
 
@@ -45,29 +47,28 @@ watcher.on('ready', async ()=> {
 }).on('add', async (path) => {
     if(state.startOver === true){
         const timeSet = await getTimeSet(state.filePath)
-        console.log('jsdno0 debug10', timeSet)
-        // for(let i = 0; i < 2; i++) {
-            setTimeout(async (v,i,a)=>{
+        // console.log('jsdno0 debug10', timeSet)
+            setTimeout(async ()=>{
                 if(state.add.switch === false) {
                     state.add.list = new Array();
                     await recursiveFile(state.filePath, 'add')
                     // console.log('jsdno0 debug4', state.add.list.length +'/'+ state.loadPath.length)
-                    state.cnt = state.add.list.length - state.loadPath.length
+                    state.add.cnt = state.add.list.length - state.loadPath.length
                     // console.log('jsdno0 debug1', state.cnt)
                     state.add.switch = true
                 }
                 await funcLoadPath(path, 'add')
-                if(state.loop === (state.cnt-1)){
-                    state.loop = 0
-                    state.cnt = 0
+                console.log('jsdno0 debug1', state.add.loop, state.add.cnt)
+                if(state.add.loop === (state.add.cnt-1)){
+                    state.add.loop = 0
+                    state.add.cnt = 0
                     state.add.list = new Array()
                     state.add.switch = false
                     console.log('add program update')
                 } else {
-                    state.loop++;
+                    state.add.loop++;
                 }
             }, timeSet)
-        // }
     } else {
         funcLoadPath(path, 'add')
         console.log(path, 'File is added')
@@ -95,8 +96,18 @@ watcher.on('ready', async ()=> {
         funcLoadPath(path, 'unlink')
         console.log(path, 'File is removed')
     }
-}).on('change', path => {
-    console.log(path, 'File is changed')
+}).on('change', async path => {
+    if(state.startOver === true){
+        console.log(watcher)
+        const timeSet = await getTimeSet(state.filePath)
+        console.log('jsdno0 debug10 change', timeSet, state.change.switch)
+            setTimeout(async ()=>{
+                console.log('change program update')
+            }, timeSet)
+    } else {
+        funcLoadPath(path, 'change')
+        console.log(path, 'File is changed')
+    }
 }).on('error', error => {
     console.log(error)
 });
